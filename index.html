@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111a2e">
+<title>برنامج الصلاحيات</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--tx:#111827;--mu:#6b7280;--br:#e5e7eb;--dk:#111a2e;--or:#ff7a00;--rd:#ef4444;--gr:#059669;--in:#f3f4f6}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#162033;--tx:#f3f4f6;--mu:#9ca3af;--br:#26324a;--in:#1e2a42}}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font-family:Tahoma,"Segoe UI",Arial,sans-serif;padding-bottom:90px;min-height:100vh}
+header{background:var(--dk);color:#fff;padding:16px 18px;padding-top:calc(16px + env(safe-area-inset-top,0px));border-radius:0 0 26px 26px;display:flex;align-items:center;gap:12px}
+.logo{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#ff7a00,#ffa63d);display:grid;place-items:center;font-size:24px;flex:none}
+header h1{font-size:17px;margin:0}header small{opacity:.8;word-break:break-all}
+.out{margin-inline-start:auto;background:#26324a;color:#fff;border:0;border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit}
+main{padding:18px 16px}
+.hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.hd h2{margin:0;font-size:20px}.hd span{color:var(--mu);font-size:13px}
+.card{background:var(--card);border-radius:22px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.06);margin-bottom:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.stat{background:var(--card);border-radius:20px;padding:14px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+.stat:last-child:nth-child(odd){grid-column:span 2}
+.stat div{color:var(--mu);font-size:13px}.stat b{font-size:34px;display:block}
+input{width:100%;padding:13px;border:1px solid var(--br);border-radius:14px;background:var(--card);color:var(--tx);font-size:15px;font-family:inherit}
+label{display:block;color:var(--mu);font-size:13px;margin:10px 0 6px}
+.btn{border:0;border-radius:14px;padding:13px 16px;font-size:15px;font-family:inherit;background:var(--in);color:var(--tx);cursor:pointer}
+.btn.p{background:var(--or);color:#fff;font-weight:700}.btn.d{background:var(--dk);color:#fff;width:100%;margin-top:12px}
+.btn.x{background:#fee2e2;color:var(--rd)}.btn.w{width:100%}.btn:disabled{opacity:.6}
+.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}.row>.btn{flex:none}
+.item{padding:14px 0;border-bottom:1px solid var(--br)}.item:last-child{border:0}
+.item h3{margin:0 0 6px;font-size:16px}.item p{margin:2px 0;color:var(--mu);font-size:13px}
+.top{display:flex;justify-content:space-between;gap:8px}
+.tag{border-radius:20px;padding:5px 11px;font-size:13px;font-weight:700;height:fit-content;white-space:nowrap}
+.ok{background:#d1fae5;color:var(--gr)}.wa{background:#fef3c7;color:#b45309}.bd{background:#fee2e2;color:var(--rd)}
+.acts{display:flex;gap:8px;margin-top:10px}
+nav{position:fixed;bottom:0;inset-inline:0;background:var(--card);border-top:1px solid var(--br);display:flex;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;background:none;border:0;color:var(--mu);font-size:12px;font-family:inherit;padding:6px}
+nav button i{display:block;font-style:normal;font-size:24px}nav button.on{color:var(--or)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:9}
+.modal.s{display:flex}.modal .card{width:100%;margin:0;border-radius:24px 24px 0 0;max-height:90vh;overflow:auto}
+.login{max-width:380px;margin:10vh auto;padding:0 18px;text-align:center}
+.login .logo{margin:0 auto 14px;width:70px;height:70px;font-size:36px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px;border-bottom:1px solid var(--br);text-align:start;white-space:nowrap}
+.mu{color:var(--mu)}.err{color:var(--rd);font-size:14px;min-height:20px}
+.link{background:none;border:0;color:var(--or);font-family:inherit;font-size:14px;margin-top:10px}
+@media print{header,nav,.noprint,.btn{display:none!important}body{background:#fff;color:#000}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<div id="app"><p class="mu" style="text-align:center;margin-top:30vh">جاري التحميل...</p></div>
+<div class="modal" id="md"><div class="card" id="mb"></div></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,orderBy,limit,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const cfg={apiKey:"AIzaSyA9ofCq3jRLsOgLc5gbMQ4W6C-QBTWqRQQ",authDomain:"ahmad-nagy.firebaseapp.com",projectId:"ahmad-nagy",storageBucket:"ahmad-nagy.firebasestorage.app",messagingSenderId:"517118934254",appId:"1:517118934254:web:19f9796f7b63c45f8e87ff"};
+const MGR="nagy1552002@gmail.com";
+const fb=initializeApp(cfg),auth=getAuth(fb),db=getFirestore(fb);
+let fb2=null;
+let me=null,tab="home",q="",showLog=false,rep=null,msg="",unsubs=[];
+let P=[],LG=[],ST=[];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const fmt=s=>s.split("-").reverse().join("/");
+const days=s=>Math.round((new Date(s+"T00:00")-new Date(iso(new Date())+"T00:00"))/864e5);
+const isM=()=>me===MGR;
+const tagC=d=>d<=5?"bd":d<=30?"wa":"ok";
+const dTxt=d=>d<0?"منتهي منذ "+(-d)+" يوم":d===0?"ينتهي اليوم":d+" يوم";
+const eMsg=e=>({"auth/invalid-credential":"البريد أو كلمة المرور غير صحيحة","auth/invalid-email":"البريد غير صالح","auth/email-already-in-use":"هذا البريد له حساب بالفعل","auth/weak-password":"كلمة المرور ضعيفة (6 أحرف على الأقل)","auth/too-many-requests":"محاولات كثيرة، حاول لاحقًا","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","permission-denied":"ليس لديك صلاحية لهذه العملية"}[e.code]||("خطأ: "+(e.code||e.message)));
+async function log(a,p){try{await addDoc(collection(db,"logs"),{t:serverTimestamp(),u:me,a,p:p||""})}catch(e){}}
+
+/* ---------- auth ---------- */
+onAuthStateChanged(auth,async u=>{
+ unsubs.forEach(f=>f());unsubs=[];
+ if(!u){me=null;return render()}
+ const e=(u.email||"").toLowerCase();
+ if(e!==MGR){
+  try{const s=await getDoc(doc(db,"staff",e));if(!s.exists()){await signOut(auth);msg="حسابك غير مفعّل. اطلب من المدير إضافتك.";return render()}}
+  catch(x){await signOut(auth);msg="تعذّر التحقق من الصلاحيات";return render()}
+ }
+ me=e;msg="";
+ unsubs.push(onSnapshot(collection(db,"products"),s=>{P=s.docs.map(d=>({id:d.id,...d.data()}));render(true)},x=>{msg=eMsg(x)}));
+ unsubs.push(onSnapshot(query(collection(db,"logs"),orderBy("t","desc"),limit(200)),s=>{LG=s.docs.map(d=>d.data());if(showLog)render(true)},()=>{}));
+ if(isM())unsubs.push(onSnapshot(collection(db,"staff"),s=>{ST=s.docs.map(d=>d.id);if(tab==="users")render(true)},()=>{}));
+ render();
+});
+window.doLogin=async()=>{const e=$("#em").value.trim().toLowerCase(),p=$("#pw").value;$("#er").textContent="";
+ try{await signInWithEmailAndPassword(auth,e,p)}catch(x){$("#er").textContent=eMsg(x)}};
+window.regMgr=async()=>{const e=$("#em").value.trim().toLowerCase(),p=$("#pw").value;
+ if(e!==MGR){$("#er").textContent="هذا الخيار للمدير فقط";return}
+ try{await createUserWithEmailAndPassword(auth,e,p)}catch(x){$("#er").textContent=eMsg(x)}};
+window.logout=()=>signOut(auth);
+
+/* ---------- views ---------- */
+function render(soft){
+ const a=$("#app");
+ if(!me){a.innerHTML=`<div class="login"><div class="logo">📦</div><h2>برنامج الصلاحيات</h2><p class="mu">سجّل الدخول للمتابعة</p>
+ <input id="em" type="email" dir="ltr" placeholder="البريد الإلكتروني" autocomplete="username">
+ <div style="height:10px"></div><input id="pw" type="password" dir="ltr" placeholder="كلمة المرور" autocomplete="current-password">
+ <button class="btn p w" style="margin-top:12px" onclick="doLogin()">دخول</button>
+ <p class="err" id="er">${esc(msg)}</p>
+ <button class="link" onclick="regMgr()">إنشاء حساب المدير (أول مرة فقط)</button></div>`;return}
+ if(soft&&$("#qs"))return keep();
+ const nav=[["home","🏠","الرئيسية"],["products","📦","المنتجات"],["reports","📊","التقارير"]];
+ if(isM())nav.push(["users","👥","المستخدمون"]);
+ a.innerHTML=`<header><div class="logo">📦</div><div><h1>برنامج الصلاحيات</h1><small>${isM()?"👑 المدير":"👤 موظف"} · ${esc(me)}</small></div><button class="out" onclick="logout()">خروج</button></header>
+ <main>${V[tab]()}</main><nav>${nav.map(n=>`<button class="${tab===n[0]?"on":""}" onclick="go('${n[0]}')"><i>${n[1]}</i>${n[2]}</button>`).join("")}</nav>`;
+}
+window.go=t=>{tab=t;render()};
+const V={
+home(){
+ const c=n=>P.filter(p=>{const d=days(p.exp);return d>=0&&d<=n}).length;
+ const near=P.filter(p=>days(p.exp)<=30).sort((a,b)=>a.exp<b.exp?-1:1);
+ return `<div class="hd"><h2>لوحة المتابعة</h2><span>${fmt(iso(new Date()))}</span></div>
+ <div class="grid">
+ <div class="stat"><div>ينتهي اليوم</div><b style="color:var(--rd)">${P.filter(p=>days(p.exp)===0).length}</b></div>
+ <div class="stat"><div>ينتهي غدًا</div><b style="color:#f59e0b">${P.filter(p=>days(p.exp)===1).length}</b></div>
+ <div class="stat"><div>خلال 3 أيام</div><b style="color:#d97706">${c(3)}</b></div>
+ <div class="stat"><div>خلال 5 أيام</div><b style="color:#2563eb">${c(5)}</b></div>
+ <div class="stat"><div>خلال 30 يوم</div><b style="color:var(--gr)">${c(30)}</b></div></div>
+ <div class="card"><div class="hd"><h2 style="font-size:17px">المنتجات القريبة من الانتهاء</h2><span>${near.length} منتج</span></div>
+ ${near.length?near.map(p=>`<div class="item"><div class="top"><h3>${esc(p.name)}</h3><span class="tag ${tagC(days(p.exp))}">${dTxt(days(p.exp))}</span></div><p>الكود: ${esc(p.code)} · الكمية: ${esc(p.qty)} · الانتهاء: ${fmt(p.exp)}</p></div>`).join(""):`<p class="mu" style="text-align:center;padding:24px">لا توجد منتجات قريبة من الانتهاء 🎉</p>`}</div>`},
+products(){
+ return `<div class="hd"><h2>المنتجات</h2><span>${P.length} منتج</span></div>
+ <div class="card"><div class="row"><button class="btn p" onclick="pform()">+ إضافة</button><input id="qs" placeholder="🔍 ابحث بالاسم أو الكود" value="${esc(q)}" oninput="q=this.value;keep()"></div><div id="pl">${plist()}</div></div>
+ <button class="btn w" onclick="showLog=!showLog;render()">📋 سجل العمليات ${showLog?"▲":"▼"}</button>
+ ${showLog?`<div class="card" style="margin-top:12px"><div class="tw"><table><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>المنتج</th></tr>${LG.map(l=>`<tr><td>${l.t?l.t.toDate().toLocaleString("ar-EG"):""}</td><td>${esc(l.u)}</td><td>${esc(l.a)}</td><td>${esc(l.p)}</td></tr>`).join("")||'<tr><td colspan="4" class="mu">لا توجد عمليات</td></tr>'}</table></div></div>`:""}`},
+reports(){
+ return `<div class="hd"><h2>التقارير</h2><span>حسب تاريخ الانتهاء</span></div>
+ <div class="card noprint"><div class="row"><div><label>من تاريخ</label><input type="date" id="f"></div><div><label>إلى تاريخ</label><input type="date" id="t"></div></div>
+ <button class="btn d" onclick="runRep()">عرض التقرير</button>
+ <div class="row" style="margin-top:12px"><button class="btn" onclick="xl()">📊 Excel</button><button class="btn" onclick="window.print()">📄 PDF / طباعة</button></div></div>
+ ${rep?`<div class="card"><p class="mu">من ${fmt(rep.f)} إلى ${fmt(rep.t)} · ${rep.rows.length} منتج</p><div class="tw"><table><tr><th>الكود</th><th>الاسم</th><th>الكمية</th><th>الانتهاء</th><th>الباقي</th></tr>${rep.rows.map(p=>`<tr><td>${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.qty)}</td><td>${fmt(p.exp)}</td><td>${days(p.exp)}</td></tr>`).join("")}</table></div></div>`:""}`},
+users(){
+ return `<div class="hd"><h2>إدارة المستخدمين</h2><span>للمدير فقط</span></div>
+ <div class="card"><label>بريد الموظف</label><input id="ne" type="email" dir="ltr" placeholder="employee@gmail.com">
+ <label>كلمة مرور للموظف (6 أحرف على الأقل)</label><input id="np" type="text" dir="ltr" placeholder="••••••">
+ <p class="err" id="ue"></p><button class="btn p w" onclick="addU()">+ إضافة موظف</button>
+ <div class="item"><div class="top"><div><h3>👑 المدير</h3><p dir="ltr" style="text-align:right">${MGR}</p></div><span class="mu" style="font-size:12px">صلاحيات كاملة</span></div></div>
+ ${ST.map(u=>`<div class="item"><div class="top"><div><h3>👤 موظف</h3><p dir="ltr" style="text-align:right">${esc(u)}</p></div><button class="btn x" onclick="delU('${esc(u)}')">حذف</button></div></div>`).join("")}</div>`}
+};
+function plist(){
+ const L=P.filter(p=>((p.name||"")+(p.code||"")).toLowerCase().includes(q.toLowerCase())).sort((a,b)=>a.exp<b.exp?-1:1);
+ return L.length?L.map(p=>{const d=days(p.exp);return `<div class="item"><div class="top"><h3>${esc(p.name)}</h3><span class="tag ${tagC(d)}">${dTxt(d)}</span></div><p>الكود: ${esc(p.code)} · الكمية: ${esc(p.qty)}</p><p>الانتهاء: ${fmt(p.exp)} · باقي: ${d} يوم</p><div class="acts"><button class="btn" onclick="pform('${p.id}')">✏️ تعديل</button>${isM()?`<button class="btn x" onclick="delP('${p.id}')">🗑️ حذف</button>`:""}</div></div>`}).join(""):`<p class="mu" style="text-align:center;padding:20px">لا توجد منتجات</p>`}
+window.keep=()=>{const e=$("#pl");if(e)e.innerHTML=plist()};
+window.render=render;Object.defineProperty(window,"q",{get:()=>q,set:v=>q=v});Object.defineProperty(window,"showLog",{get:()=>showLog,set:v=>showLog=v});
+
+/* ---------- products ---------- */
+window.pform=id=>{const p=P.find(x=>x.id===id)||{code:"",name:"",qty:"",exp:""};
+ $("#mb").innerHTML=`<h2 style="margin-top:0">${id?"تعديل منتج":"إضافة منتج"}</h2><label>كود المنتج</label><input id="c" value="${esc(p.code)}"><label>اسم المنتج</label><input id="n" value="${esc(p.name)}"><label>الكمية</label><input id="qt" type="number" min="0" value="${esc(p.qty)}"><label>تاريخ الانتهاء</label><input id="e" type="date" value="${p.exp}"><p id="pe" class="err"></p><div class="row"><button class="btn p" id="sv" onclick="saveP('${id||""}')">حفظ</button><button class="btn" onclick="cm()">إلغاء</button></div>`;
+ $("#md").classList.add("s")};
+window.cm=()=>$("#md").classList.remove("s");
+window.saveP=async id=>{const v={code:$("#c").value.trim(),name:$("#n").value.trim(),qty:Number($("#qt").value),exp:$("#e").value};
+ if(!v.code||!v.name||!v.exp||$("#qt").value===""){$("#pe").textContent="من فضلك املأ كل الحقول";return}
+ $("#sv").disabled=true;
+ try{if(id){await updateDoc(doc(db,"products",id),v);log("تعديل",v.name)}else{await addDoc(collection(db,"products"),v);log("إضافة",v.name)}cm()}
+ catch(x){$("#pe").textContent=eMsg(x);$("#sv").disabled=false}};
+window.delP=async id=>{const p=P.find(x=>x.id===id);if(!p||!confirm("حذف "+p.name+"؟"))return;
+ try{await deleteDoc(doc(db,"products",id));log("حذف",p.name)}catch(x){alert(eMsg(x))}};
+
+/* ---------- users ---------- */
+window.addU=async()=>{const e=$("#ne").value.trim().toLowerCase(),p=$("#np").value,er=$("#ue");er.textContent="";
+ if(!/^\S+@\S+\.\S+$/.test(e)||e===MGR){er.textContent="بريد غير صالح";return}
+ if(p.length<6){er.textContent="كلمة المرور 6 أحرف على الأقل";return}
+ try{
+  if(!fb2)fb2=initializeApp(cfg,"secondary");
+  const a2=getAuth(fb2);
+  try{await createUserWithEmailAndPassword(a2,e,p);await signOut(a2)}
+  catch(x){if(x.code!=="auth/email-already-in-use")throw x;er.textContent="هذا البريد له حساب سابق، سيعمل بكلمة مروره القديمة."}
+  await setDoc(doc(db,"staff",e),{added:serverTimestamp(),by:me});
+  log("إضافة موظف",e);$("#ne").value="";$("#np").value=""
+ }catch(x){er.textContent=eMsg(x)}};
+window.delU=async e=>{if(!confirm("حذف الموظف؟"))return;try{await deleteDoc(doc(db,"staff",e));log("حذف موظف",e)}catch(x){alert(eMsg(x))}};
+
+/* ---------- reports ---------- */
+window.runRep=()=>{const f=$("#f").value,t=$("#t").value;if(!f||!t)return;
+ rep={f,t,rows:P.filter(p=>p.exp>=f&&p.exp<=t).sort((a,b)=>a.exp<b.exp?-1:1)};render();$("#f").value=f;$("#t").value=t};
+window.xl=()=>{if(!rep){alert("اعرض التقرير أولًا");return}
+ const ws=XLSX.utils.aoa_to_sheet([["الكود","الاسم","الكمية","تاريخ الانتهاء","الباقي (يوم)"],...rep.rows.map(p=>[p.code,p.name,p.qty,fmt(p.exp),days(p.exp)])]);
+ ws["!cols"]=[{wch:14},{wch:30},{wch:10},{wch:14},{wch:12}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"تقرير");
+ XLSX.writeFile(wb,`report_${rep.f}_${rep.t}.xlsx`)};
+</script>
+</body>
+</html>
